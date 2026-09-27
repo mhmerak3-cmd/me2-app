@@ -1,11 +1,7 @@
 package com.me2.app.ai
-import com.me2.app.ai.AiActionDispatcher
-import com.me2.app.ai.AiCoachEngine
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
+
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class AiNutritionEstimate(
     val itemName: String,
@@ -28,9 +24,7 @@ data class DailyReviewSummary(
 class AiCoachEngine(
     private val apiKey: String? = System.getenv("GEMINI_API_KEY")
 ) {
-    private val httpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(8))
-        .build()
+// httpClient removed for Android compatibility
 
     fun parseFoodEntry(rawInput: String): AiNutritionEstimate {
         val cleanInput = rawInput.lowercase()
@@ -150,27 +144,39 @@ class AiCoachEngine(
         }
         """.trimIndent()
 
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-            .timeout(Duration.ofSeconds(8))
-            .build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() == 200) {
-            val body = response.body()
-            val textToken = "\"text\": \""
-            val startIndex = body.indexOf(textToken)
-            if (startIndex != -1) {
-                val sub = body.substring(startIndex + textToken.length)
-                val endIndex = sub.indexOf("\"")
-                if (endIndex != -1) {
-                    return sub.substring(0, endIndex).replace("\\n", "\n")
-                }
+                try {
+            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/json")
+                connectTimeout = 8000
+                readTimeout = 8000
+                doOutput = true
             }
-        } else {
-            println("  ⚠️ [Gemini API Error]: HTTP ${response.statusCode()} - ${response.body()}")
+            connection.outputStream.use { os ->
+                os.write(requestJson.toByteArray(Charsets.UTF_8))
+            }
+            val statusCode = connection.responseCode
+            val body = if (statusCode == 200) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                connection.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+            }
+            if (statusCode == 200) {
+                val textToken = "\"text\": \""
+                val startIndex = body.indexOf(textToken)
+                if (startIndex != -1) {
+                    val sub = body.substring(startIndex + textToken.length)
+                    val endIndex = sub.indexOf("\"")
+                    if (endIndex != -1) {
+                        return sub.substring(0, endIndex).replace("\n", "
+")
+                    }
+                }
+            } else {
+                println("  ⚠️ [Gemini API Error]: HTTP $statusCode - $body")
+            }
+        } catch (e: Exception) {
+            println("  ⚠️ [Gemini Network Error]: ${e.message}")
         }
         return null
     }

@@ -7,6 +7,8 @@ class AiActionDispatcher(
     private val repository: Me2LocalRepository
 ) {
     // ইউজারের ভয়েস বা টেক্সট থেকে উদ্দেশ্য (Intent) বুঝে স্বয়ংক্রিয়ভাবে অ্যাপ আপডেট করা
+    fun executeVoiceDirective(commandText: String): String = processVoiceCommand(commandText)
+
     fun processVoiceCommand(commandText: String): String {
         val input = commandText.lowercase()
 
