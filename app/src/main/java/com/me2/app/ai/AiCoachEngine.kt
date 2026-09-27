@@ -144,7 +144,7 @@ class AiCoachEngine(
         }
         """.trimIndent()
 
-                try {
+                        try {
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
@@ -168,8 +168,7 @@ class AiCoachEngine(
                     val sub = body.substring(startIndex + textToken.length)
                     val endIndex = sub.indexOf("\"")
                     if (endIndex != -1) {
-                        return sub.substring(0, endIndex).replace("\n", "
-")
+                        return sub.substring(0, endIndex).replace("\\n", "\n")
                     }
                 }
             } else {
