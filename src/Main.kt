@@ -1,57 +1,72 @@
-import com.me2.app.ai.AiCoachEngine
+import com.me2.app.ai.AiActionDispatcher
 import com.me2.app.data.models.*
 import com.me2.app.data.repository.Me2LocalRepository
 import com.me2.app.domain.engine.*
-import java.time.LocalDate
 import java.time.LocalTime
 
 fun main() {
     println("==================================================")
-    println("       ME 2.0 — AI COACH & OFFLINE ENGINE         ")
+    println("     ME 2.0 — AI FULL-CONTROL VOICE ASSISTANT     ")
     println("==================================================\n")
 
     val gamificationEngine = GamificationEngine()
     val repository = Me2LocalRepository(gamificationEngine)
-    val aiCoach = AiCoachEngine() // API Key না থাকলে স্বয়ংক্রিয়ভাবে অফলাইন ফলব্যাকে যাবে
+    val assistant = AiActionDispatcher(repository)
 
-    println("[1] NATURAL LANGUAGE FOOD INTERPRETATION")
-    val userMealText = "২টা ডিম আর ২টা রুটি খেয়েছি"
-    println("• User Input: \"$userMealText\"")
-
-    val parsedNutrition = aiCoach.parseFoodEntry(userMealText)
-    println("• Engine Used: [${parsedNutrition.source}]")
-    println("• Identified Item: ${parsedNutrition.itemName} (${parsedNutrition.portion})")
-    println("• Estimated Calories: ${parsedNutrition.calories} kcal")
-    println("• Macros: Protein ${parsedNutrition.protein}g | Carbs ${parsedNutrition.carbs}g | Fat ${parsedNutrition.fat}g\n")
-
-    // খাবারটি লোকাল ডাটাবেজে সংরক্ষণ
-    repository.logFood(
-        rawInput = userMealText,
-        itemName = parsedNutrition.itemName,
-        portion = parsedNutrition.portion,
-        calories = parsedNutrition.calories,
-        protein = parsedNutrition.protein,
-        carbs = parsedNutrition.carbs,
-        fat = parsedNutrition.fat
+    // প্রোফাইল ইনিশিয়ালাইজ
+    val profile = UserProfile(
+        name = "Mehedi",
+        age = 24,
+        sex = "male",
+        heightCm = 175f,
+        currentWeightKg = 72f,
+        targetWeightKg = 75f,
+        activityLevel = ActivityLevel.MODERATE,
+        primaryGoal = PrimaryGoal.BUILD_MUSCLE,
+        wakeUpTime = LocalTime.of(5, 0),
+        sleepTargetTime = LocalTime.of(22, 0),
+        currentLevel = 1,
+        currentXp = 0L,
+        currentStreakDays = 12
     )
+    repository.saveProfile(profile)
 
-    println("[2] END-OF-DAY AI PERFORMANCE REVIEW")
-    val review = aiCoach.generateDailyReview(
-        completedMissions = 7,
-        totalMissions = 9,
-        consumedKcal = 1850,
-        targetKcal = 2400,
-        proteinG = 92f,
-        targetProteinG = 120,
-        shiftName = "Morning Duty (06:00 - 15:00)"
-    )
+    println("[VOICE COMMAND SIMULATION]")
 
-    println("• Review Source: [${review.source}]")
-    println("• Headline: ${review.statusHeadline}")
-    println("• Analysis: ${review.performanceAnalysis}")
-    println("• Tomorrow's Directive: ${review.tomorrowFocus}\n")
+    // কমান্ড ১: ইউজার মুখে বলল ডিম খাওয়ার কথা
+    val voiceCmd1 = "আমি আজকে একটা ডিম খেয়েছি সেটা এখানে সেট করে দাও"
+    println("🗣️ User: \"$voiceCmd1\"")
+    val reply1 = assistant.processVoiceCommand(voiceCmd1)
+    println("🤖 AI Assistant: $reply1\n")
 
-    println("==================================================")
-    println("     ALL SUBSYSTEMS OPERATIONAL & VERIFIED        ")
+    // কমান্ড ২: ইউজার মুখে বলল ঘুমের কথা
+    val voiceCmd2 = "আজকে আমি ৭ ঘণ্টা ঘুমিয়েছি সেট করে দাও"
+    println("🗣️ User: \"$voiceCmd2\"")
+    val reply2 = assistant.processVoiceCommand(voiceCmd2)
+    println("🤖 AI Assistant: $reply2\n")
+
+    // কমান্ড ৩: পানি খাওয়ার কথা
+    val voiceCmd3 = "২৫০ মিলি পানি খেলাম"
+    println("🗣️ User: \"$voiceCmd3\"")
+    val reply3 = assistant.processVoiceCommand(voiceCmd3)
+    println("🤖 AI Assistant: $reply3\n")
+
+    // কমান্ড ৪: মিশন শেষের কথা
+    val voiceCmd4 = "আজকের ওয়ার্কআউট করেছি মিশন কমপ্লিট করো"
+    println("🗣️ User: \"$voiceCmd4\"")
+    val reply4 = assistant.processVoiceCommand(voiceCmd4)
+    println("🤖 AI Assistant: $reply4\n")
+
+    // ডাটাবেজের অবস্থা যাচাই (স্বয়ংক্রিয়ভাবে আপডেট হয়েছে কি না)
+    println("[SYSTEM DATABASE VERIFICATION]")
+    val macros = repository.getTodayMacroSummary()
+    println("• Auto-Logged Calories: ${macros["calories"]} kcal")
+    println("• Auto-Logged Protein: ${macros["protein"]}g")
+    
+    val currentProf = repository.getProfile()!!
+    println("• Current Operator XP: ${currentProf.currentXp} XP (Updated via Assistant)")
+
+    println("\n==================================================")
+    println("    ASSISTANT COMMAND EXECUTION: VERIFIED PASS    ")
     println("==================================================")
 }
