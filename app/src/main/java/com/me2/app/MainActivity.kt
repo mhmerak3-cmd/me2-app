@@ -1,5 +1,6 @@
 package com.me2.app
-
+import com.me2.app.ai.AiActionDispatcher
+import com.me2.app.ai.AiCoachEngine
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
