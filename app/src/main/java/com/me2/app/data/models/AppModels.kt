@@ -1,79 +1,41 @@
 package com.me2.app.data.models
 
-import com.me2.app.domain.engine.ActivityLevel
-import com.me2.app.domain.engine.PrimaryGoal
-import com.me2.app.domain.engine.MissionCategory
-import com.me2.app.domain.engine.MissionDifficulty
-import com.me2.app.domain.engine.ShiftType
-import java.time.LocalDate
-import java.time.LocalTime
+enum class RankTier(val title: String, val minLevel: Int, val maxLevel: Int, val badge: String) {
+    BRONZE("Bronze", 1, 10, "🥉"),
+    SILVER("Silver", 11, 25, "🥈"),
+    GOLD("Gold", 26, 45, "🥇"),
+    PLATINUM("Platinum", 46, 70, "💎"),
+    DIAMOND("Diamond", 71, 99, "💠"),
+    MASTER("Master", 100, 999, "👑")
+}
 
-// ১. ইউজার প্রোফাইল মডেল
+enum class MealType(val bangla: String) {
+    BREAKFAST("সকালের নাস্তা"),
+    LUNCH("দুপুরের খাবার"),
+    DINNER("রাতের খাবার"),
+    SNACKS("বিকেলের নাশতা / স্ন্যাক্স")
+}
+
 data class UserProfile(
-    val id: Int = 1,
-    val name: String,
-    val age: Int,
-    val sex: String,
-    val heightCm: Float,
-    val currentWeightKg: Float,
-    val targetWeightKg: Float?,
-    val activityLevel: ActivityLevel,
-    val primaryGoal: PrimaryGoal,
-    val wakeUpTime: LocalTime,
-    val sleepTargetTime: LocalTime,
-    var currentLevel: Int = 1,
-    var currentXp: Long = 0L,
-    var currentStreakDays: Int = 0,
-    var isRecoveryMode: Boolean = false
+    val name: String = "Mehedi",
+    val age: Int = 24,
+    val heightCm: Float = 175f,
+    val weightKg: Float = 68f,
+    val primaryGoal: String = "স্বাস্থ্য ও পেশিবহুল বডি বৃদ্ধি",
+    val targetWaterMl: Int = 2800,
+    val targetCalories: Int = 2350,
+    val targetProteinG: Float = 110f,
+    val currentXp: Long = 0L,
+    val currentLevel: Int = 1,
+    val tokens: Int = 0,
+    val streakDays: Int = 0,
+    val isOnboarded: Boolean = false
 )
 
-// ২. কাজের শিফট মডেল
-data class ShiftRecord(
-    val shiftId: Long,
-    val shiftName: String,
-    val shiftType: ShiftType,
-    val startTime: LocalTime,
-    val endTime: LocalTime,
-    val dayOfWeek: Int // ১ = সোমবার ... ৭ = রবিবার
-)
-
-// ৩. খাদ্য ও পুষ্টি লগ মডেল (AI এস্টিমেটেড ফ্ল্যাগ সহ)
-data class FoodEntry(
-    val id: Long,
-    val date: LocalDate,
-    val timestamp: LocalTime,
-    val rawInput: String,
-    val itemName: String,
-    val portionDescription: String,
-    val calories: Int,
-    val proteinGrams: Float,
-    val carbsGrams: Float,
-    val fatGrams: Float,
-    val isAiEstimated: Boolean = true
-)
-
-// ৪. পানি ও হাইড্রেশন রেকর্ড
-data class WaterRecord(
-    val date: LocalDate,
-    val targetMl: Int = 2500,
-    var consumedMl: Int = 0
-)
-
-// ৫. স্লিপ লগ মডেল
-data class SleepRecord(
-    val date: LocalDate,
-    val bedTime: LocalTime,
-    val wakeTime: LocalTime,
-    val durationMinutes: Int,
-    val targetMinutes: Int = 480
-)
-
-// ৬. XP ট্রানজ্যাকশন হিস্টোরি
-data class XPTransaction(
-    val id: Long,
-    val date: LocalDate,
-    val timestamp: LocalTime,
-    val xpAmount: Int,
-    val reason: String,
-    val category: MissionCategory
+data class MissionModel(
+    val id: String,
+    val title: String,
+    val xpReward: Int,
+    val category: String,
+    val isAiCreated: Boolean = false
 )

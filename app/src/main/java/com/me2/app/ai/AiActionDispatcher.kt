@@ -1,60 +1,57 @@
 package com.me2.app.ai
 
+import com.me2.app.data.local.Me2Vault
+import com.me2.app.data.models.MealType
 import com.me2.app.data.repository.Me2LocalRepository
-import com.me2.app.domain.engine.MissionCategory
 
 class AiActionDispatcher(
-    private val repository: Me2LocalRepository
+    private val repository: Me2LocalRepository,
+    private val aiEngine: AiCoachEngine,
+    private val vault: Me2Vault? = null
 ) {
-    // ইউজারের ভয়েস বা টেক্সট থেকে উদ্দেশ্য (Intent) বুঝে স্বয়ংক্রিয়ভাবে অ্যাপ আপডেট করা
-    fun executeVoiceDirective(commandText: String): String = processVoiceCommand(commandText)
+    fun executeVoiceDirective(spokenText: String): String = processVoiceCommand(spokenText)
 
-    fun processVoiceCommand(commandText: String): String {
-        val input = commandText.lowercase()
+    fun processVoiceCommand(rawInput: String): String {
+        val input = rawInput.trim().lowercase()
 
-        return when {
-            // ১. খাবার লগ করার কমান্ড
-            input.contains("খেয়েছি") || input.contains("খাবার") || input.contains("ডিম") || input.contains("ভাত") -> {
-                val itemName = if (input.contains("ডিম")) "১টি সিদ্ধ ডিম" else "খাবার"
-                val calories = if (input.contains("ডিম")) 75 else 250
-                val protein = if (input.contains("ডিম")) 6.5f else 10.0f
-
-                repository.logFood(
-                    rawInput = commandText,
-                    itemName = itemName,
-                    portion = "১ সার্ভিং",
-                    calories = calories,
-                    protein = protein,
-                    carbs = 1.0f,
-                    fat = 5.0f
-                )
-                "বুঝেছি, আপনার $itemName ডাটাবেজে যোগ করা হয়েছে। ক্যালোরি: $calories kcal, প্রোটিন: ${protein}g।"
-            }
-
-            // ২. ঘুম রেকর্ড করার কমান্ড
-            input.contains("ঘুম") || input.contains("ঘুমিয়েছি") || input.contains("sleep") -> {
-                val hours = if (input.contains("৭") || input.contains("7")) 7 else 8
-                // রিপোজিটরিতে ঘুম রেকর্ড আপডেট
-                "আপনার আজকের $hours ঘণ্টার ঘুম সফলভাবে সিস্টেমে রেকর্ড করা হয়েছে।"
-            }
-
-            // ৩. পানি পান করার কমান্ড
-            input.contains("পানি") || input.contains("water") -> {
-                val ml = if (input.contains("৫০০") || input.contains("500")) 500 else 250
-                val record = repository.addWater(ml)
-                "আজকের তালিকায় $ml মিলি পানি যোগ করা হয়েছে। মোট পানি: ${record.consumedMl} মিলি।"
-            }
-
-            // ৪. মিশন সম্পন্ন করার কমান্ড
-            input.contains("মিশন শেষ") || input.contains("ওয়ার্কআউট করেছি") -> {
-                val tx = repository.awardXp(30, "ভয়েস কমান্ডে মিশন সম্পন্ন", MissionCategory.BODY)
-                "অভিনন্দন! আপনার মিশন সম্পন্ন মার্ক করা হয়েছে এবং +${tx.xpAmount} XP যোগ হয়েছে।"
-            }
-
-            // সাধারণ জিজ্ঞাসা
-            else -> {
-                "কমান্ডটি বুঝতে পেরেছি। আপনার প্রোফাইল ও শিডিউল অনুযায়ী সিস্টেম আপডেট রয়েছে।"
-            }
+        if (input.contains("হাইট") || input.contains("লম্বা") || input.contains("উচ্চতা")) {
+            vault?.addCustomMission("হাইট বুস্ট: ১০ মিনিট ঝুলন্ত স্ট্রেচ ও কোবরা এক্সারসাইজ", 30, "হাইট বৃদ্ধি")
+            return "আপনার জন্য একটি নতুন মিশন যুক্ত করা হয়েছে: 'হাইট বুস্ট: ১০ মিনিট ঝুলন্ত স্ট্রেচ'। প্রতিদিন ড্যাশবোর্ডে এটি সম্পন্ন করতে পারবেন!"
         }
+        if (input.contains("মিশন তৈরি") || input.contains("লক্ষ্য তৈরি") || input.contains("স্বাস্থ্য বাড়াতে")) {
+            vault?.addCustomMission("হেলথ গ্রোথ: হাই-ক্যালোরি পুষ্টিকর খাবার ও রেস্ট", 25, "স্বাস্থ্য বৃদ্ধি")
+            return "নতুন মিশন যুক্ত করা হয়েছে: 'হেলথ গ্রোথ মিশন'। প্রতিদিনের তালিকায় এটি সেভ থাকবে।"
+        }
+
+        if (input.contains("খেয়েছি") || input.contains("খাবার")) {
+            val mealType = when {
+                input.contains("সকাল") -> MealType.BREAKFAST
+                input.contains("রাত") -> MealType.DINNER
+                input.contains("নাশতা") || input.contains("চা") -> MealType.SNACKS
+                else -> MealType.LUNCH
+            }
+            val cal = if (input.contains("মাছ")) 520 else if (input.contains("ভাত")) 480 else 400
+            val prot = if (input.contains("মাছ") || input.contains("মাংস")) 32f else 20f
+            vault?.addDetailedMeal(type = mealType, items = rawInput, cal = cal, protein = prot)
+            return "${mealType.bangla} হিসেবে যোগ করা হয়েছে: $rawInput (~$cal kcal, ${prot}g প্রোটিন)। ডাটা পারমানেন্টলি সংরক্ষিত!"
+        }
+
+        if (input.contains("পানি")) {
+            val ml = if (input.contains("৫০০") || input.contains("500")) 500 else 250
+            vault?.addWater(ml)
+            return "$ml মিলি পানি সফলভাবে ডাটাবেজে সংরক্ষণ করা হয়েছে (+10 XP)।"
+        }
+
+        if (input.contains("মিশন শেষ") || input.contains("ওয়ার্কআউট করেছি")) {
+            vault?.markMissionDone(vault.getTodayDate(), "workout", 30)
+            return "অভিনন্দন! আপনার ওয়ার্কআউট মিশন সম্পন্ন মার্ক করা হয়েছে এবং +30 XP যোগ হয়েছে।"
+        }
+
+        val geminiReply = aiEngine.askGemini(rawInput)
+        if (!geminiReply.isNullOrBlank()) {
+            return geminiReply
+        }
+
+        return "কমান্ড পেয়েছি। প্রোফাইল ও শিডিউল অনুযায়ী ডাটা সুরক্ষিত রাখা হয়েছে।"
     }
 }
