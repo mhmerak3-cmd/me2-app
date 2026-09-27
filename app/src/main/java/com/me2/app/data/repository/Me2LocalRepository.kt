@@ -1,5 +1,6 @@
 package com.me2.app.data.repository
 
+import com.me2.app.data.local.Me2Vault
 import com.me2.app.data.models.*
 import com.me2.app.domain.engine.GamificationEngine
 import java.time.LocalDate
@@ -8,34 +9,33 @@ import java.time.LocalTime
 class Me2LocalRepository(
     private val gamificationEngine: GamificationEngine
 ) {
-    // লোকাল ইন-মেমোরি ডাটা স্টোর (অফলাইন ফার্স্ট)
+    private var vault: Me2Vault? = null
     private var userProfile: UserProfile? = null
-    private val shifts = mutableListOf<ShiftRecord>()
     private val foodEntries = mutableListOf<FoodEntry>()
     private val waterEntries = mutableMapOf<LocalDate, WaterRecord>()
-    private val sleepEntries = mutableListOf<SleepRecord>()
-    private val xpTransactions = mutableListOf<XPTransaction>()
-
-    private var transactionIdCounter = 1L
     private var foodIdCounter = 1L
 
-    // ইউজার প্রোফাইল সেভ ও রিড
+    fun bindVault(v: Me2Vault) {
+        this.vault = v
+    }
+
     fun saveProfile(profile: UserProfile) {
         this.userProfile = profile
     }
 
-    fun getProfile(): UserProfile? = userProfile
-
-    // শিফট ম্যানেজমেন্ট
-    fun addShift(shift: ShiftRecord) {
-        shifts.add(shift)
+    fun getProfile(): UserProfile? {
+        val v = vault
+        return if (v != null) {
+            UserProfile(
+                name = "Mehedi",
+                currentXp = v.getXp(),
+                currentLevel = v.getLevel()
+            )
+        } else {
+            userProfile
+        }
     }
 
-    fun getShiftForDay(dayOfWeek: Int): ShiftRecord? {
-        return shifts.firstOrNull { it.dayOfWeek == dayOfWeek }
-    }
-
-    // খাবার ও পুষ্টি যোগ করা
     fun logFood(
         rawInput: String,
         itemName: String,
@@ -45,6 +45,7 @@ class Me2LocalRepository(
         carbs: Float,
         fat: Float
     ): FoodEntry {
+        vault?.addMeal(calories, protein)
         val entry = FoodEntry(
             id = foodIdCounter++,
             date = LocalDate.now(),
@@ -62,48 +63,43 @@ class Me2LocalRepository(
         return entry
     }
 
-    // আজকের মোট পুষ্টির হিসাব
     fun getTodayMacroSummary(date: LocalDate = LocalDate.now()): Map<String, Number> {
-        val todayEntries = foodEntries.filter { it.date == date }
-        val totalKcal = todayEntries.sumOf { it.calories }
-        val totalProtein = todayEntries.sumOf { it.proteinGrams.toDouble() }.toFloat()
-        val totalCarbs = todayEntries.sumOf { it.carbsGrams.toDouble() }.toFloat()
-        val totalFat = todayEntries.sumOf { it.fatGrams.toDouble() }.toFloat()
-
-        return mapOf(
-            "calories" to totalKcal,
-            "protein" to totalProtein,
-            "carbs" to totalCarbs,
-            "fat" to totalFat
-        )
+        val v = vault
+        return if (v != null) {
+            mapOf(
+                "calories" to v.getCalories(),
+                "protein" to v.getProtein(),
+                "carbs" to 0f,
+                "fat" to 0f
+            )
+        } else {
+            val todayEntries = foodEntries.filter { it.date == date }
+            mapOf(
+                "calories" to todayEntries.sumOf { it.calories },
+                "protein" to todayEntries.sumOf { it.proteinGrams.toDouble() }.toFloat(),
+                "carbs" to 0f,
+                "fat" to 0f
+            )
+        }
     }
 
-    // পানি যোগ করা (যেমন +250ml বা +500ml)
     fun addWater(amountMl: Int, date: LocalDate = LocalDate.now()): WaterRecord {
-        val record = waterEntries.getOrPut(date) { WaterRecord(date = date) }
-        record.consumedMl += amountMl
+        val v = vault
+        val total = v?.addWater(amountMl) ?: amountMl
+        val record = WaterRecord(date = date, consumedMl = total)
+        waterEntries[date] = record
         return record
     }
 
-    // XP প্রদান ও স্বয়ংক্রিয় লেভেল আপডেট
     fun awardXp(amount: Int, reason: String, category: com.me2.app.domain.engine.MissionCategory): XPTransaction {
-        val tx = XPTransaction(
-            id = transactionIdCounter++,
+        vault?.let { it.setXp(it.getXp() + amount) }
+        return XPTransaction(
+            id = System.currentTimeMillis(),
             date = LocalDate.now(),
             timestamp = LocalTime.now(),
             xpAmount = amount,
             reason = reason,
             category = category
         )
-        xpTransactions.add(tx)
-
-        // ইউজারের লেভেল ও মোট এক্সপি আপডেট
-        userProfile?.let { profile ->
-            profile.currentXp += amount
-            val progress = gamificationEngine.calculateProgression(profile.currentXp)
-            profile.currentLevel = progress.currentLevel
-        }
-
-        return tx
     }
 }
